@@ -11,4 +11,5 @@ eval/__pycache__/
 eval/result.json
 eval/traces/
 *.pyc
+*.log
 .venv/

@@ -1,0 +1,12 @@
+{
+  "什么是深度学习？": {
+    "base": "什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator\n什么是深度学习？ createStackNavigator\n createStackNavigator",
+    "sft": "深度学习是一种机器学习方法，它使用神经网络来学习数据。深度学习模型通常包含多个隐藏层，每个隐藏层都包含多个神经元，这些神经元通过激活函数连接到输出层。深度学习模型可以自动学习数据中的复杂模式，从而实现对数据的分类、聚类",
+    "dpo": "深度学习是一种人工智能技术，它模仿人脑的神经网络结构来实现学习和推理。这种技术通过构建多层神经网络，从输入数据中提取特征并进行分类、预测或生成。\n\n在深度学习中，网络的层数和深度决定了其学习能力。通常，深度学习网络"
+  },
+  "如何保护账号安全？": {
+    "base": "如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何保护账号安全？anko\nanko\n如何",
+    "sft": "保护账号安全的方法有很多，以下是一些常见的方法：\n\n1. 使用强密码：使用复杂且独特的密码，包括大小写字母、数字和特殊字符，以增加安全性。\n\n2. 不要泄露密码：不要在公共网络或社交媒体上泄露密码，也不要将密码写在纸上或放在手机",
+    "dpo": "保护账号安全涉及多个方面，以下是一些实用的建议：\n\n1. 使用强密码：创建一个独特的、至少包含8个字符的密码，并定期更改它。使用密码管理器来存储和管理密码，以确保它们的安全性。\n\n2. 避免泄露密码：不要在公共"
+  }
+}

@@ -1,0 +1,12 @@
+diff --git a/calculator.py b/calculator.py
+index 20ddc0a..6bd5739 100644
+--- a/calculator.py
++++ b/calculator.py
+@@ -1,6 +1,6 @@
+ def add(a, b):
+     """Return the sum of two numbers."""
+-    return a - b
++    return a + b
+ 
+ def factorial(n):
+     if n < 0:

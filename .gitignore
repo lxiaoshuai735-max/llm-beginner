@@ -6,6 +6,11 @@ __pycache__/
 
 # 工具缓存
 .pytest_cache/
+.ipynb_checkpoints/
+
+# 运行日志和后台进程退出码
+*.log
+*.exit
 
 # 虚拟环境
 .venv/
