@@ -1,0 +1,13 @@
+{
+  "target_modules": [
+    "q_proj",
+    "v_proj"
+  ],
+  "r": 8,
+  "alpha": 16,
+  "optimizer_steps": 1875,
+  "samples_seen": 30000,
+  "epochs": 1,
+  "full_corpus": false,
+  "final_loss": 1.05078125
+}

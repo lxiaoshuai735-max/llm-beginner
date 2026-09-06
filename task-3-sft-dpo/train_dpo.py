@@ -73,8 +73,16 @@ def main():
     parser.add_argument("--max-length", type=int, default=512)
     parser.add_argument("--log-every", type=int, default=20)
     parser.add_argument("--save-every", type=int, default=2000)
-    parser.add_argument("--sft-dir", default="ckpt/sft-full")
-    parser.add_argument("--output-dir", default="ckpt/dpo-full")
+    parser.add_argument(
+        "--sft-dir",
+        default="ckpt/sft",
+        help="SFT adapter directory produced by train_sft.py",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="ckpt/dpo",
+        help="Final DPO adapter directory; matches src/compare.py",
+    )
     args = parser.parse_args()
 
     torch.manual_seed(42)

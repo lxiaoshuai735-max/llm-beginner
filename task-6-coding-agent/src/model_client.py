@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 from typing import Any
 
-import requests
-
 
 class LocalQwenClient:
     def __init__(self, api_url: str | None = None, model: str | None = None, timeout: int = 180) -> None:
@@ -15,6 +13,12 @@ class LocalQwenClient:
         self.timeout = timeout
 
     def chat(self, messages: list[dict[str, str]], max_tokens: int = 500) -> str:
+        try:
+            import requests
+        except ImportError as exc:
+            raise RuntimeError(
+                "the requests package is required for the local model client"
+            ) from exc
         response = requests.post(
             self.api_url,
             json={

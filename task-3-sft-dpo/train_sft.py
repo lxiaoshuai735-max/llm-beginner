@@ -35,7 +35,11 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=16)
     parser.add_argument("--log-every", type=int, default=20)
     parser.add_argument("--save-every", type=int, default=5000)
-    parser.add_argument("--output-dir", default="ckpt/sft-full")
+    parser.add_argument(
+        "--output-dir",
+        default="ckpt/sft",
+        help="Final adapter directory; matches eval/run.py and src/compare.py",
+    )
     return parser.parse_args()
 
 

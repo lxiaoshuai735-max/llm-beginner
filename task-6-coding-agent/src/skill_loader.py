@@ -6,8 +6,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 
 class SkillLoader:
     def __init__(self, skills_dir: str) -> None:
@@ -19,7 +17,19 @@ class SkillLoader:
         match = re.match(r"\A---\s*\n(.*?)\n---\s*\n?(.*)\Z", document, flags=re.S)
         if not match:
             return {}, document
-        metadata = yaml.safe_load(match.group(1)) or {}
+        try:
+            import yaml
+
+            metadata = yaml.safe_load(match.group(1)) or {}
+        except ImportError:
+            # The bundled skills only require scalar name/description fields.
+            # Keep metadata discovery testable before optional dependencies are
+            # installed; PyYAML remains the full parser used in production.
+            metadata = {}
+            for line in match.group(1).splitlines():
+                key, separator, value = line.partition(":")
+                if separator:
+                    metadata[key.strip()] = value.strip().strip("\"'")
         return metadata if isinstance(metadata, dict) else {}, match.group(2).strip()
 
     def _scan(self) -> dict[str, dict[str, Any]]:

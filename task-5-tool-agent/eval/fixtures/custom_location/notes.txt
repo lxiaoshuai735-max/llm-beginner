@@ -1,0 +1,2 @@
+This file lives in a configurable test directory.
+REGRESSION_PATH_MARKER

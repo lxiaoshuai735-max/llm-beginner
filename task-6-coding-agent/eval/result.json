@@ -1,0 +1,37 @@
+[
+  {
+    "test": "mcp_server_lists_tools",
+    "pass": true,
+    "tools": [
+      "read_file",
+      "write_file",
+      "run_tests",
+      "git_diff",
+      "git_apply",
+      "search_files"
+    ]
+  },
+  {
+    "test": "skill_loader_metadata",
+    "pass": true,
+    "count": 3,
+    "missing_meta": []
+  },
+  {
+    "test": "toy_repo_patch",
+    "pass": true,
+    "tests_passed": true,
+    "pytest_output": "...                                                                      [100%]\n3 passed in 0.01s\n",
+    "trace_success": true,
+    "trace_has_patch": true,
+    "tool_transport": "mcp-stdio",
+    "trace_source": "recorded_real_qwen",
+    "patch_applied": true,
+    "patch_apply_output": ""
+  },
+  {
+    "test": "swebench_lite_sample",
+    "pass": null,
+    "skip": "data/swebench-lite-sample.parquet 不存在；需要时跑 data/download.py --with-swebench"
+  }
+]

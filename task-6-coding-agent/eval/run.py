@@ -1,7 +1,10 @@
-"""任务六自检：MCP server 工具列表 + Skill loader 元数据 + SWE-bench Lite 抽样跑通。"""
+"""任务六自检：MCP、Skill、真实 Agent 闭环与可选 SWE-bench 样本。"""
+import json
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +47,6 @@ def test_skill_loader_metadata():
 
 
 def test_toy_repo_patch():
-    from src.agent import CodingAgent
     toy_repo = ROOT / "data" / "toy-repo"
     issue_path = toy_repo / "ISSUE.md"
     if not issue_path.exists():
@@ -60,22 +62,74 @@ def test_toy_repo_patch():
                 "skip": "缺少 calculator.py.orig 基准快照；请重跑 data/download.py"}
     shutil.copy(buggy, toy_repo / "calculator.py")
 
-    agent = CodingAgent()
-    issue = issue_path.read_text(encoding="utf-8")
-    trace = agent.run(repo_path=str(toy_repo), issue=issue)
-    test_run = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q"],
-        cwd=toy_repo,
-        text=True,
-        capture_output=True,
-        timeout=60,
+    trace_path = ROOT / "eval" / "toy_repo_trace.json"
+    regenerate = os.getenv("TASK6_REGENERATE_TRACE") == "1"
+    if regenerate:
+        from src.agent import CodingAgent
+
+        issue = issue_path.read_text(encoding="utf-8")
+        trace = CodingAgent().run(repo_path=str(toy_repo), issue=issue)
+        trace_path.write_text(
+            json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        trace_source = "live_qwen"
+        apply_ok = True
+        apply_output = "patch was applied by the live agent"
+    elif trace_path.exists():
+        trace = json.loads(trace_path.read_text(encoding="utf-8"))
+        trace_source = "recorded_real_qwen"
+        patch = trace.get("patch", "") if isinstance(trace, dict) else ""
+        patch_run = subprocess.run(
+            ["git", "apply", "--whitespace=nowarn", "-"],
+            cwd=toy_repo,
+            input=patch,
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        apply_ok = patch_run.returncode == 0
+        apply_output = (patch_run.stdout + patch_run.stderr)[-500:]
+    else:
+        return {
+            "test": "toy_repo_patch",
+            "pass": None,
+            "skip": "缺少真实 Qwen Trace；先运行 python run_toy_agent.py",
+        }
+    # A same-size source edit can otherwise reuse a timestamp-valid stale .pyc
+    # when both test runs happen in the same second.  Isolate bytecode just as
+    # the MCP run_tests tool does.
+    with tempfile.TemporaryDirectory(prefix="coding-agent-eval-pycache-") as pycache:
+        environment = os.environ.copy()
+        environment["PYTHONPYCACHEPREFIX"] = pycache
+        test_run = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q"],
+            cwd=toy_repo,
+            text=True,
+            capture_output=True,
+            timeout=60,
+            env=environment,
+        )
+    trace_success = bool(isinstance(trace, dict) and trace.get("success"))
+    trace_has_patch = bool(isinstance(trace, dict) and trace.get("patch"))
+    transport = trace.get("tool_transport") if isinstance(trace, dict) else None
+    passed = (
+        test_run.returncode == 0
+        and trace_success
+        and trace_has_patch
+        and transport == "mcp-stdio"
+        and apply_ok
     )
     return {
         "test": "toy_repo_patch",
-        "pass": test_run.returncode == 0,
+        "pass": passed,
         "tests_passed": test_run.returncode == 0,
         "pytest_output": (test_run.stdout + test_run.stderr)[-800:],
-        "trace_has_patch": bool(isinstance(trace, dict) and trace.get("patch")),
+        "trace_success": trace_success,
+        "trace_has_patch": trace_has_patch,
+        "tool_transport": transport,
+        "trace_source": trace_source,
+        "patch_applied": apply_ok,
+        "patch_apply_output": apply_output,
     }
 
 

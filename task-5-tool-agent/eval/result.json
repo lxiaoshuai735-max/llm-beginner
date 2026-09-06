@@ -1,0 +1,216 @@
+[
+  {
+    "test": "tools_individual",
+    "pass": true,
+    "results": {
+      "calculator": true,
+      "python_sandbox": true,
+      "file_search": true,
+      "wiki": "skip(网络不可用？): Wikipedia lookup failed: en: Wikipedia en request failed: HTTPSConnectionPool(host='en.wikipedia.org', port=443): Max retries exceeded with url: /w/api.php?action=query&list=search&srsearch=Alan+Turing&srlimit=1&format=json (Caused by ConnectTimeoutError(<HTTPSConnection(host='en.wikipedia.org', port=443) at 0x7f7b55afdbd0>, 'Connection to en.wikipedia.org timed out. (connect timeout=8)')); zh: Wikipedia zh request failed: HTTPSConnectionPool(host='zh.wikipedia.org', port=443): Max retries exceeded with url: /w/api.php?action=query&list=search&srsearch=Alan+Turing&srlimit=1&format=json (Caused by ConnectTimeoutError(<HTTPSConnection(host='zh.wikipedia.org', port=443) at 0x7f7b55afde10>, 'Connection to zh.wikipedia.org timed out. (connect timeout=8)'))"
+    },
+    "network_skipped": [
+      "wiki"
+    ]
+  },
+  {
+    "test": "multi_tool_success_rate",
+    "pass": true,
+    "rate": 0.7,
+    "n": 10,
+    "details": [
+      {
+        "id": 1,
+        "success": true,
+        "final_answer_preview": "结果为456831，共有6位。",
+        "expected_answer_contains": [
+          "456831",
+          [
+            "6位",
+            "6 位",
+            "六位",
+            "6 digits"
+          ]
+        ],
+        "expected_tools": [
+          "calculator"
+        ],
+        "used_tools": [
+          "calculator"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 2,
+        "success": true,
+        "final_answer_preview": "100以内所有质数的和是1060。",
+        "expected_answer_contains": [
+          "1060"
+        ],
+        "expected_tools": [
+          "python_sandbox"
+        ],
+        "used_tools": [
+          "python_sandbox"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 3,
+        "success": true,
+        "final_answer_preview": "在 data/agent-fixtures 目录下共有2个 .md 文件。",
+        "expected_answer_contains": [
+          [
+            "2",
+            "两"
+          ]
+        ],
+        "expected_tools": [
+          "file_search"
+        ],
+        "used_tools": [
+          "file_search"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 4,
+        "success": false,
+        "final_answer_preview": "任务未完成：model did not provide a final answer at the step limit",
+        "expected_answer_contains": [
+          [
+            "Turing",
+            "图灵"
+          ]
+        ],
+        "expected_tools": [
+          "wiki"
+        ],
+        "used_tools": [
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 5,
+        "success": false,
+        "final_answer_preview": "任务未完成：model did not provide a final answer at the step limit",
+        "expected_answer_contains": [
+          "1947",
+          [
+            "78",
+            "79"
+          ]
+        ],
+        "expected_tools": [
+          "wiki",
+          "calculator"
+        ],
+        "used_tools": [
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki",
+          "wiki"
+        ],
+        "used_expected_tools": false
+      },
+      {
+        "id": 6,
+        "success": true,
+        "final_answer_preview": "函数 is_palindrome('level') 的返回值为 True，is_palindrome('world') 的返回值为 False，因此 'level' 是回文，而 'world' 不是回文。",
+        "expected_answer_contains": [
+          "level",
+          "True",
+          "world",
+          "False"
+        ],
+        "expected_tools": [
+          "python_sandbox"
+        ],
+        "used_tools": [
+          "python_sandbox"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 7,
+        "success": true,
+        "final_answer_preview": "包含 'TODO' 的文件路径为：data/agent-fixtures/todo_note.md。",
+        "expected_answer_contains": [
+          "todo_note.md"
+        ],
+        "expected_tools": [
+          "file_search"
+        ],
+        "used_tools": [
+          "file_search"
+        ],
+        "used_expected_tools": true
+      },
+      {
+        "id": 8,
+        "success": true,
+        "final_answer_preview": "45.011110",
+        "expected_answer_contains": [
+          [
+            "45.011110",
+            "45.01111"
+          ]
+        ],
+        "expected_tools": [
+          "calculator",
+          "python_sandbox"
+        ],
+        "used_tools": [
+          "calculator",
+          "calculator"
+        ],
+        "used_expected_tools": false
+      },
+      {
+        "id": 9,
+        "success": false,
+        "final_answer_preview": "任务未完成：model did not provide a final answer at the step limit",
+        "expected_answer_contains": [
+          "2017",
+          "9"
+        ],
+        "expected_tools": [
+          "wiki",
+          "calculator"
+        ],
+        "used_tools": [],
+        "used_expected_tools": null
+      },
+      {
+        "id": 10,
+        "success": true,
+        "final_answer_preview": "它的第一段写了：“这是任务五的本地文件检索测试文件。”",
+        "expected_answer_contains": [
+          "任务五",
+          "本地文件检索测试文件"
+        ],
+        "expected_tools": [
+          "file_search"
+        ],
+        "used_tools": [
+          "file_search",
+          "file_search"
+        ],
+        "used_expected_tools": true
+      }
+    ]
+  },
+  {
+    "test": "error_recovery",
+    "pass": null,
+    "skip": "需要学生实现 inject_error 测试钩子；可选实验"
+  }
+]

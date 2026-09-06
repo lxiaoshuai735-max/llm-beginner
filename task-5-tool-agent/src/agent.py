@@ -7,8 +7,6 @@ import os
 import re
 from typing import Any
 
-import requests
-
 from .tools import TOOLS, TOOL_SCHEMAS
 
 _SYSTEM_PROMPT = """你是一个严谨的 ReAct 工具智能体。必须先用工具获得证据，不能凭记忆直接作答。
@@ -49,12 +47,18 @@ class ReActAgent:
         self.max_steps = max_steps
         self.timeout = timeout
         tool_text = "\n".join(
-            f"- {item['function']['name']}: {item['function']['description']}"
+            (
+                f"- {item['function']['name']}: {item['function']['description']}; "
+                f"Action Input JSON Schema="
+                f"{json.dumps(item['function']['parameters'], ensure_ascii=False)}"
+            )
             for item in TOOL_SCHEMAS
         )
         self.system_prompt = _SYSTEM_PROMPT.format(tool_text=tool_text)
 
     def _chat(self, messages: list[dict[str, str]]) -> str:
+        import requests
+
         response = requests.post(
             self.api_url,
             json={
@@ -84,15 +88,17 @@ class ReActAgent:
         if final:
             return {"kind": "final", "thought": thought, "answer": final.group(1).strip()}
         action = re.search(r"Action\s*[:：]\s*([A-Za-z_][\w-]*)", text, flags=re.I)
-        action_input = re.search(r"Action\s*Input\s*[:：]\s*(\{.*\})", text, flags=re.I | re.S)
+        action_input = re.search(r"Action\s*Input\s*[:：]\s*", text, flags=re.I)
         if not action or not action_input:
             raise ValueError("response must contain Action and Action Input, or Final Answer")
-        raw_json = action_input.group(1).strip()
+        raw_json = text[action_input.end():].strip()
         decoder = json.JSONDecoder()
         try:
-            arguments, _ = decoder.raw_decode(raw_json)
+            arguments, end = decoder.raw_decode(raw_json)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Action Input is not valid JSON: {exc.msg}") from exc
+        if raw_json[end:].strip():
+            raise ValueError("Action Input must contain exactly one JSON object")
         if not isinstance(arguments, dict):
             raise ValueError("Action Input must be a JSON object")
         return {
@@ -103,103 +109,13 @@ class ReActAgent:
         }
 
     @staticmethod
-    def _recovery_action(task: str, steps: list[dict[str, Any]]) -> tuple[str, dict[str, str]] | None:
-        """Semantic fallback used only when the model cannot emit valid ReAct syntax."""
-        lowered = task.lower()
-        used = [str(step.get("tool", "")) for step in steps]
-        observations = "\n".join(str(step.get("observation", "")) for step in steps)
-        if any(key in lowered for key in ["todo", "readme", "文件", ".md"]):
-            pattern = "TODO" if "todo" in lowered else ("README.md" if "readme" in lowered else "*.md")
-            return "file_search", {"pattern": pattern, "dir": "data/agent-fixtures"}
-        if any(key in lowered for key in ["质数", "回文", "python"]):
-            if "质数" in lowered:
-                code = "print(sum(n for n in range(2,100) if all(n%d for d in range(2,int(n**0.5)+1))))"
-            elif "回文" in lowered:
-                code = "def is_palindrome(s): return s == s[::-1]\nprint('level', is_palindrome('level'))\nprint('world', is_palindrome('world'))"
-            else:
-                code = "print(round(2026 ** 0.5, 6))"
-            return "python_sandbox", {"code": code}
-        if any(key in lowered for key in ["维基", "wiki", "hinton", "transformer", "图灵"]):
-            if "wiki" not in used:
-                query = "Geoffrey Hinton" if "hinton" in lowered else ("Transformer machine learning model" if "transformer" in lowered else "图灵机")
-                return "wiki", {"query": query}
-            years = [int(year) for year in re.findall(r"\b(?:19|20)\d{2}\b", observations)]
-            if years and any(key in lowered for key in ["年龄", "相差", "多少年", "2026"]):
-                relevant = min(years, key=lambda year: abs(year - (1947 if "hinton" in lowered else 2017)))
-                return "calculator", {"expression": f"2026-{relevant}"}
-        expression = re.search(r"(?:计算|calculate)\s*([^，。；;]+)", task, flags=re.I)
-        if expression:
-            cleaned = expression.group(1).replace("的结果", "").strip()
-            return "calculator", {"expression": cleaned}
-        if "平方根" in task or "sqrt" in lowered:
-            return "calculator", {"expression": "sqrt(2026)"}
-        return None
-
-    @staticmethod
-    def _normalize_arguments(task: str, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        """Repair common small-model argument omissions using facts stated in the task."""
-        lowered = task.lower()
-        fixed = dict(arguments)
-        if tool_name == "file_search" and any(key in lowered for key in ["agent-fixtures", "todo", "readme", ".md"]):
-            fixed["dir"] = "data/agent-fixtures"
-            if "todo" in lowered:
-                fixed["pattern"] = "TODO"
-            elif "readme" in lowered:
-                fixed["pattern"] = "README.md"
-            elif ".md" in lowered:
-                fixed["pattern"] = "*.md"
-        elif tool_name == "python_sandbox":
-            if "质数" in task:
-                fixed["code"] = "print(sum(n for n in range(2,100) if all(n%d for d in range(2,int(n**0.5)+1))))"
-            elif "回文" in task and "level" in lowered and "world" in lowered:
-                fixed["code"] = "def is_palindrome(s): return s == s[::-1]\nprint('level', is_palindrome('level'))\nprint('world', is_palindrome('world'))"
-            elif ("平方根" in task or "sqrt" in lowered) and "print" not in str(fixed.get("code", "")):
-                fixed["code"] = "print(f'{2026 ** 0.5:.6f}')"
-        elif tool_name == "wiki":
-            if "hinton" in lowered or "辛顿" in task:
-                fixed["query"] = "Geoffrey Hinton"
-            elif "transformer" in lowered:
-                fixed["query"] = "Transformer machine learning model"
-            elif "图灵机" in task:
-                fixed["query"] = "图灵机 Alan Turing"
-        elif tool_name == "calculator" and ("平方根" in task or "sqrt" in lowered):
-            fixed["expression"] = "sqrt(2026)"
-        return fixed
-
-    @staticmethod
-    def _ground_answer(answer: str, steps: list[dict[str, Any]]) -> str:
-        """Keep final answers auditable by attaching compact, successful tool evidence."""
-        evidence: list[str] = []
-        total = 0
-        for step in steps:
-            observation = str(step.get("observation", "")).strip()
-            if not observation or observation.startswith("ToolError"):
-                continue
-            compact = observation[:900]
-            if total + len(compact) > 2200:
-                compact = compact[: max(0, 2200 - total)]
-            if compact:
-                evidence.append(f"[{step.get('tool', 'tool')}] {compact}")
-                total += len(compact)
-            if total >= 2200:
-                break
-        if not evidence:
-            return answer
-        return answer + "\n\n工具依据：\n" + "\n".join(evidence)
-
-    def _required_followup(self, task: str, steps: list[dict[str, Any]]) -> tuple[str, dict[str, str]] | None:
-        """Require the second tool when the task explicitly describes a tool chain."""
-        lowered = task.lower()
-        successful = {
-            str(step.get("tool"))
+    def _has_successful_tool_call(steps: list[dict[str, Any]]) -> bool:
+        """Return whether at least one model-requested tool call succeeded."""
+        return any(
+            step.get("tool")
+            and not str(step.get("observation", "")).startswith("ToolError")
             for step in steps
-            if step.get("tool") and not str(step.get("observation", "")).startswith("ToolError")
-        }
-        if ("hinton" in lowered or "辛顿" in task or "transformer" in lowered) and "wiki" in successful and "calculator" not in successful:
-            return self._recovery_action(task, steps)
-        if ("平方根" in task or "sqrt" in lowered) and "calculator" in successful and "python_sandbox" not in successful:
-            return "python_sandbox", {"code": "print(f'{2026 ** 0.5:.6f}')"}
-        return None
+        )
 
     def run(self, task: str) -> dict[str, Any]:
         messages = [
@@ -213,59 +129,66 @@ class ReActAgent:
         for index in range(1, self.max_steps + 1):
             try:
                 model_text = self._chat(messages)
-                parsed = self._parse(model_text)
-            except Exception as exc:  # API and format failures become recoverable observations
+            except Exception as exc:
                 last_error = f"{type(exc).__name__}: {exc}"
-                recovery = self._recovery_action(task, steps)
-                if recovery is None:
-                    messages.append({"role": "user", "content": f"Observation: {last_error}\n请严格按格式重试。"})
-                    steps.append({"step": index, "thought": "修复模型输出", "observation": last_error})
-                    continue
-                tool_name, arguments = recovery
-                model_text = f"Thought: 输出格式失败，使用安全恢复路由。\nAction: {tool_name}\nAction Input: {json.dumps(arguments, ensure_ascii=False)}"
-                parsed = {"kind": "action", "thought": "使用安全恢复路由", "tool": tool_name, "arguments": arguments}
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"Observation: 模型服务调用失败：{last_error}\n请在服务恢复后继续。",
+                    }
+                )
+                steps.append({"step": index, "thought": "模型服务调用失败", "observation": last_error})
+                continue
+            try:
+                parsed = self._parse(model_text)
+            except (TypeError, ValueError) as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+                messages.extend(
+                    [
+                        {"role": "assistant", "content": model_text},
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Observation: {last_error}\n"
+                                "上一条响应无法执行。请重新阅读原始问题，严格按格式给出工具及其参数；"
+                                "不要复用其他问题中的数字、范围或路径。"
+                            ),
+                        },
+                    ]
+                )
+                steps.append({"step": index, "thought": "等待模型修复输出", "observation": last_error})
+                continue
 
             if parsed["kind"] == "final":
                 answer = str(parsed["answer"]).strip()
-                followup = self._required_followup(task, steps)
-                if followup is not None:
-                    tool_name, arguments = followup
-                    arguments = self._normalize_arguments(task, tool_name, arguments)
-                    try:
-                        observation = TOOLS[tool_name](arguments)
-                    except Exception as exc:
-                        observation = f"ToolError: {type(exc).__name__}: {exc}"
-                    steps.append(
-                        {
-                            "step": index,
-                            "thought": "执行题目明确要求的后续工具",
-                            "tool": tool_name,
-                            "tool_input": arguments,
-                            "observation": observation,
-                        }
-                    )
+                if not self._has_successful_tool_call(steps):
                     messages.extend(
                         [
                             {"role": "assistant", "content": model_text},
-                            {"role": "user", "content": f"Observation: {observation}\n复合任务现已完成，请据此重新给出 Final Answer。"},
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Observation: 尚无成功的工具调用，不能直接给出 Final Answer。"
+                                    "请根据原始问题自行选择工具并提供准确的 Action Input。"
+                                ),
+                            },
                         ]
                     )
+                    steps.append(
+                        {
+                            "step": index,
+                            "thought": parsed.get("thought", ""),
+                            "observation": "ToolError: final answer requires successful tool evidence",
+                        }
+                    )
                     continue
-                answer = self._ground_answer(answer, steps)
                 return {"steps": steps, "final_answer": answer, "success": bool(answer)}
 
             tool_name = str(parsed["tool"])
-            arguments = self._normalize_arguments(task, tool_name, parsed["arguments"])
-
-            # If a composite question already has Wiki evidence, redirect a
-            # redundant Wiki call to the requested follow-up calculation.
-            if tool_name == "wiki" and any(
-                step.get("tool") == "wiki" and not str(step.get("observation", "")).startswith("ToolError")
-                for step in steps
-            ):
-                recovery = self._recovery_action(task, steps)
-                if recovery is not None and recovery[0] != "wiki":
-                    tool_name, arguments = recovery
+            # Preserve Action Input exactly as the model supplied it.  Tool
+            # errors are returned as observations so the model, rather than
+            # task-specific host logic, decides how to correct an argument.
+            arguments = parsed["arguments"]
             signature = json.dumps([tool_name, arguments], ensure_ascii=False, sort_keys=True)
             repeated[signature] = repeated.get(signature, 0) + 1
             if tool_name not in TOOLS:
@@ -297,9 +220,9 @@ class ReActAgent:
             messages.append({"role": "user", "content": "已到步骤上限。只输出 Thought 和 Final Answer，并综合已有 Observation。"})
             text = self._chat(messages)
             parsed = self._parse(text)
-            if parsed["kind"] == "final":
-                answer = self._ground_answer(str(parsed["answer"]), steps)
-                return {"steps": steps, "final_answer": answer, "success": True}
+            if parsed["kind"] == "final" and self._has_successful_tool_call(steps):
+                answer = str(parsed["answer"]).strip()
+                return {"steps": steps, "final_answer": answer, "success": bool(answer)}
             last_error = "model did not provide a final answer at the step limit"
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {exc}"

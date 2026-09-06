@@ -110,7 +110,13 @@ class MiniGPT(nn.Module):
         top_k: int | None = None,
         top_p: float | None = None,
         temperature: float = 1.0,
+        repetition_penalty: float = 1.0,
+        no_repeat_ngram_size: int = 0,
     ) -> Tensor:
+        if repetition_penalty < 1.0:
+            raise ValueError("repetition_penalty must be at least 1.0")
+        if no_repeat_ngram_size < 0:
+            raise ValueError("no_repeat_ngram_size cannot be negative")
         self.eval()
         device = next(self.parameters()).device
         ids = torch.as_tensor(prompt_ids, dtype=torch.long, device=device)
@@ -121,8 +127,35 @@ class MiniGPT(nn.Module):
         ids = ids[:, -self.block_size :]
         logits, cache = self(ids, return_cache=True)
         for _ in range(max_new_tokens):
+            next_logits = logits[:, -1].clone()
+            if repetition_penalty > 1.0:
+                for batch_index in range(ids.size(0)):
+                    seen = ids[batch_index].unique()
+                    values = next_logits[batch_index, seen]
+                    next_logits[batch_index, seen] = torch.where(
+                        values < 0,
+                        values * repetition_penalty,
+                        values / repetition_penalty,
+                    )
+            if no_repeat_ngram_size > 0:
+                for batch_index in range(ids.size(0)):
+                    sequence = ids[batch_index].tolist()
+                    prefix_size = no_repeat_ngram_size - 1
+                    if prefix_size == 0:
+                        banned = set(sequence)
+                    elif len(sequence) >= prefix_size:
+                        prefix = tuple(sequence[-prefix_size:])
+                        banned = {
+                            sequence[index + prefix_size]
+                            for index in range(len(sequence) - prefix_size)
+                            if tuple(sequence[index : index + prefix_size]) == prefix
+                        }
+                    else:
+                        banned = set()
+                    if banned and len(banned) < next_logits.size(-1):
+                        next_logits[batch_index, list(banned)] = float("-inf")
             next_id = sample_next_token(
-                logits[:, -1], temperature=temperature, top_k=top_k, top_p=top_p
+                next_logits, temperature=temperature, top_k=top_k, top_p=top_p
             )
             ids = torch.cat((ids, next_id), dim=1)
             if cache[0][0].size(-2) >= self.max_seq_len:

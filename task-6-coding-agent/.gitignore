@@ -8,6 +8,8 @@ models/
 src/__pycache__/
 src/skills/**/__pycache__/
 eval/__pycache__/
+tests/__pycache__/
+.pytest_cache/
 eval/result.json
 eval/traces/
 *.pyc
