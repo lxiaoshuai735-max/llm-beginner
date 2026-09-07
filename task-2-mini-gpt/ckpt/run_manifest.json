@@ -1,0 +1,49 @@
+{
+  "training_arguments": {
+    "epochs": 20,
+    "patience": 4,
+    "batch_size": 32,
+    "block_size": 256,
+    "vocab_size": 1024,
+    "char_vocab_size": 512,
+    "tokenizer_training_chars": 50000,
+    "learning_rate": 0.0003,
+    "d_model": 256,
+    "n_heads": 8,
+    "n_layers": 8,
+    "d_ff": 1024,
+    "dropout": 0.1,
+    "weight_decay": 0.05,
+    "output_dir": "ckpt",
+    "sample_prompts": "data/generation_prompts.json",
+    "sample_every": 1,
+    "sample_new_tokens": 24,
+    "seed": 20260906
+  },
+  "dataset_info": {
+    "dataset": "tang-poetry",
+    "train": "train.txt",
+    "dev": "dev.txt",
+    "test": "test.txt",
+    "ppl_threshold": 50,
+    "source": "https://github.com/chinese-poetry/chinese-poetry.git @ poem JSON shards (58 files)",
+    "split_unit": "complete_poem",
+    "split_seed": 20260906,
+    "dev_ratio": 0.1,
+    "test_ratio": 0.1,
+    "poem_counts": {
+      "train": 15745,
+      "dev": 1968,
+      "test": 1968
+    },
+    "char_counts": {
+      "train": 990452,
+      "dev": 119954,
+      "test": 123843
+    },
+    "prompt_file": "generation_prompts.json"
+  },
+  "tokenizer_vocab_size": 1024,
+  "parameter_count": 6572544,
+  "best_token_perplexity": 47.25481534218701
+}

@@ -1,0 +1,28 @@
+{
+  "dataset": "tang-poetry",
+  "train": "train.txt",
+  "dev": "dev.txt",
+  "test": "test.txt",
+  "ppl_threshold": 50,
+  "source": "https://github.com/chinese-poetry/chinese-poetry.git @ poem JSON shards (58 files)",
+  "split_unit": "complete_poem",
+  "deduplication": [
+    "sha256_complete_poem",
+    "complete_opening_line"
+  ],
+  "cleaning": "CJK ideographs plus standard Chinese poetry punctuation only",
+  "split_seed": 20260906,
+  "dev_ratio": 0.1,
+  "test_ratio": 0.1,
+  "poem_counts": {
+    "train": 15745,
+    "dev": 1968,
+    "test": 1968
+  },
+  "char_counts": {
+    "train": 990452,
+    "dev": 119954,
+    "test": 123843
+  },
+  "prompt_file": "generation_prompts.json"
+}

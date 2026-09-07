@@ -1,0 +1,66 @@
+{
+  "split": "test",
+  "seed": 20260906,
+  "prompts": [
+    {
+      "id": "heldout-01",
+      "prompt": "悵望銀河吹玉笙，樓寒院冷接平明。\n",
+      "title": "銀河吹笙",
+      "author": "李商隱"
+    },
+    {
+      "id": "heldout-02",
+      "prompt": "朝結故鄉念，暮作空堂寢。\n",
+      "title": "遣病十首十",
+      "author": "元稹"
+    },
+    {
+      "id": "heldout-03",
+      "prompt": "菊地纔通履，茶房不壘階。\n",
+      "title": "和左司元郎中秋居十首八",
+      "author": "張籍"
+    },
+    {
+      "id": "heldout-04",
+      "prompt": "下馬登鄴城，城空復何見。\n",
+      "title": "登古鄴城",
+      "author": "岑參"
+    },
+    {
+      "id": "heldout-05",
+      "prompt": "我遊東亭不見君，沙上行將白鷺羣。\n",
+      "title": "涇溪東亭寄鄭少府諤",
+      "author": "李白"
+    },
+    {
+      "id": "heldout-06",
+      "prompt": "再見封侯萬戶，立談賜璧一雙。\n",
+      "title": "田園樂七首二",
+      "author": "王維"
+    },
+    {
+      "id": "heldout-07",
+      "prompt": "地僻秋將盡，山高客未歸。\n",
+      "title": "秦州雜詩二十首十八",
+      "author": "杜甫"
+    },
+    {
+      "id": "heldout-08",
+      "prompt": "朝見裴叔則，朗如行玉山。\n",
+      "title": "贈裴十四",
+      "author": "李白"
+    },
+    {
+      "id": "heldout-09",
+      "prompt": "朝與周人辭，暮投鄭人宿。\n",
+      "title": "宿鄭州",
+      "author": "王維"
+    },
+    {
+      "id": "heldout-10",
+      "prompt": "白日依山盡，黃河入海流。\n",
+      "title": "登鸛雀樓",
+      "author": "王之渙"
+    }
+  ]
+}

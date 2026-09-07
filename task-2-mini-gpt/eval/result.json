@@ -5,16 +5,47 @@
     "failures": []
   },
   {
+    "test": "utf8_generation_guard",
+    "pass": true,
+    "complete_character_state": 0,
+    "stray_continuation_rejected": true
+  },
+  {
     "test": "kv_cache_equivalence",
     "pass": true,
-    "max_abs_diff": 2.384185791015625e-06
+    "max_abs_diff": 3.814697265625e-06
   },
   {
     "test": "perplexity_on_dev",
     "pass": true,
-    "perplexity": 28.16,
+    "token_perplexity": 46.7,
     "threshold": 50.0,
-    "n_tokens": 3518,
-    "dataset": "poetry"
+    "utf8_byte_nll": 1.5952,
+    "utf8_byte_perplexity": 4.9294,
+    "n_tokens": 4095,
+    "n_utf8_bytes": 9867,
+    "dataset": "tang-poetry",
+    "comparison_note": "Only byte-normalized NLL/PPL is comparable across BPE vocabularies."
+  },
+  {
+    "test": "m5_generation_quality",
+    "pass": true,
+    "sample_count": 40,
+    "review_count": 40,
+    "manual_pass_count": 32,
+    "manual_pass_ratio": 0.8,
+    "manual_pass_by_strategy": {
+      "top_p": 8,
+      "greedy": 8,
+      "temperature": 9,
+      "top_k": 7
+    },
+    "strategy_counts": {
+      "greedy": 10,
+      "temperature": 10,
+      "top_k": 10,
+      "top_p": 10
+    },
+    "reasons": []
   }
 ]

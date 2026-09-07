@@ -112,11 +112,20 @@ class MiniGPT(nn.Module):
         temperature: float = 1.0,
         repetition_penalty: float = 1.0,
         no_repeat_ngram_size: int = 0,
+        tokenizer: BPETokenizer | None = None,
+        enforce_utf8: bool = False,
+        complete_utf8_at_end: bool = True,
+        stop_after_newline: bool = False,
+        min_new_tokens: int = 1,
     ) -> Tensor:
         if repetition_penalty < 1.0:
             raise ValueError("repetition_penalty must be at least 1.0")
         if no_repeat_ngram_size < 0:
             raise ValueError("no_repeat_ngram_size cannot be negative")
+        if (enforce_utf8 or stop_after_newline) and tokenizer is None:
+            raise ValueError("tokenizer is required for UTF-8 or newline-aware generation")
+        if min_new_tokens < 1:
+            raise ValueError("min_new_tokens must be at least 1")
         self.eval()
         device = next(self.parameters()).device
         ids = torch.as_tensor(prompt_ids, dtype=torch.long, device=device)
@@ -126,6 +135,16 @@ class MiniGPT(nn.Module):
             raise ValueError("prompt must contain at least one token")
         ids = ids[:, -self.block_size :]
         logits, cache = self(ids, return_cache=True)
+        utf8_states: list[int] | None = None
+        if enforce_utf8:
+            assert tokenizer is not None
+            utf8_states = []
+            for row in ids.tolist():
+                state = tokenizer.utf8_state_for_ids(row)
+                if state is None:
+                    raise ValueError("prompt does not form a valid UTF-8 prefix")
+                utf8_states.append(state)
+        generated_bytes = [bytearray() for _ in range(ids.size(0))]
         for _ in range(max_new_tokens):
             next_logits = logits[:, -1].clone()
             if repetition_penalty > 1.0:
@@ -154,10 +173,45 @@ class MiniGPT(nn.Module):
                         banned = set()
                     if banned and len(banned) < next_logits.size(-1):
                         next_logits[batch_index, list(banned)] = float("-inf")
+            if enforce_utf8:
+                assert tokenizer is not None and utf8_states is not None
+                next_states: list[dict[int, int]] = []
+                for batch_index, state in enumerate(utf8_states):
+                    allowed, transitions = tokenizer.valid_next_tokens(state)
+                    # A byte-BPE token may end halfway through a multi-byte
+                    # Chinese character.  On the last decoding step retain
+                    # only tokens that close the UTF-8 sequence, so the saved
+                    # sample is an exact, complete UTF-8 string rather than a
+                    # lossy decoded prefix.
+                    if complete_utf8_at_end and _ == max_new_tokens - 1:
+                        allowed = [token for token in allowed if transitions[token] == 0]
+                    if not allowed:
+                        raise RuntimeError("no token can complete the UTF-8 prefix")
+                    mask = torch.ones_like(next_logits[batch_index], dtype=torch.bool)
+                    mask[allowed] = False
+                    next_logits[batch_index, mask] = float("-inf")
+                    next_states.append(transitions)
             next_id = sample_next_token(
                 next_logits, temperature=temperature, top_k=top_k, top_p=top_p
             )
+            if enforce_utf8:
+                assert utf8_states is not None
+                utf8_states = [
+                    next_states[index][int(token.item())]
+                    for index, token in enumerate(next_id[:, 0])
+                ]
+            if stop_after_newline:
+                assert tokenizer is not None
+                for index, token in enumerate(next_id[:, 0]):
+                    generated_bytes[index].extend(tokenizer.token_bytes(int(token.item())))
             ids = torch.cat((ids, next_id), dim=1)
+            if (
+                stop_after_newline
+                and _ + 1 >= min_new_tokens
+                and all(b"\n" in payload for payload in generated_bytes)
+                and (utf8_states is None or all(state == 0 for state in utf8_states))
+            ):
+                break
             if cache[0][0].size(-2) >= self.max_seq_len:
                 context = ids[:, -self.block_size :]
                 logits, cache = self(context, return_cache=True)

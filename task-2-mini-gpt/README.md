@@ -28,11 +28,11 @@
 
 必做 5 项，缺一不算完成：
 
-- [ ] **M1** 手写简化版 BPE tokenizer，自检 `tokenizer_roundtrip` 通过（encode→decode 能还原中文）
-- [ ] **M2** 手写 decoder-only 模型并集成 **RoPE**，前向不报错且形状对
-- [ ] **M3** 实现 **KV cache**，自检 `kv_cache_equivalence` 通过（开/关 cache logits 误差 < 1e-4）
-- [ ] **M4** 在语料上预训练，自检 `perplexity_on_dev` 低于阈值（唐诗 < 50 / TinyStories < 10）
-- [ ] **M5** 实现 greedy / top-k / top-p / temperature 四种采样，能生成连贯文本
+- [x] **M1** 手写简化版 BPE tokenizer，自检 `tokenizer_roundtrip` 通过（encode→decode 能还原中文）
+- [x] **M2** 手写 decoder-only 模型并集成 **RoPE**，前向不报错且形状对
+- [x] **M3** 实现 **KV cache**，自检 `kv_cache_equivalence` 通过（开/关 cache logits 误差 < 1e-4）
+- [x] **M4** 在语料上预训练，自检 `perplexity_on_dev` 低于阈值（唐诗 < 50 / TinyStories < 10）
+- [x] **M5** 实现 greedy / top-k / top-p / temperature 四种采样，能生成连贯文本
 
 加分（任选）：
 
@@ -51,6 +51,7 @@ pip install -r requirements.txt
 # 三档数据，按设备和目标选；不加参数默认 poetry，适合先跑通
 python data/download.py                         # ~49KB 唐诗 quick-start
 python data/download.py --dataset poetry        # ~49KB，CPU 即可，5 分钟跑通
+python data/download.py --dataset tang-poetry --max-poems 20000  # 清洗、去重的扩展唐诗实验
 python data/download.py --dataset tinystories   # 英文故事语料，CPU 可训，看小模型叙事能力
 python data/download.py --dataset skypile       # ~1GB+，建议 GPU
 ```
@@ -106,7 +107,7 @@ python data/download.py --dataset skypile       # ~1GB+，建议 GPU
 **输入**：训练好的模型
 **输出**：`src/sampling.py`，几段不同策略的生成样例 + 报告文字
 
-实现 greedy / top-k / top-p / temperature，对比同一 prompt 下的生成多样性与连贯度。
+实现 greedy / top-k / top-p / temperature，对比同一 prompt 下的生成多样性与连贯度。最终 M5 使用测试集内 10 个固定完整首句，每个运行四种策略；原始 token、UTF-8 字节、参数、种子保存在 `eval/generation_quality.json`，逐条人工复核保存在 `eval/generation_review.json`。
 
 **常见坑**：
 
@@ -136,12 +137,16 @@ python eval/run.py
 | 测试 | 通过标准 | 对应 DoD |
 |---|---|---|
 | `tokenizer_roundtrip` | encode → decode 还原中文文本（除已知 UTF-8 边界 case） | M1 |
+| `utf8_generation_guard` | 拒绝非法 UTF-8 前缀，输出停在完整字符边界 | M1 / M5 |
 | `kv_cache_equivalence` | 开 KV cache 与不开的 logits 一致（误差 < 1e-4） | M3 |
 | `perplexity_on_dev` | dev set 困惑度低于阈值（唐诗默认 < 50，TinyStories 默认 < 10） | M4 |
+| `m5_generation_quality` | 10×4 原始输出齐全；人工全项通过率 ≥80%，每策略至少 7/10 | M5 |
 
 > `perplexity_on_dev` 读取 `data/dev.txt`（最多取前 4096 个词元），按模型上下文长度非重叠分块累加 NLL 后求困惑度——窗口取 `MiniGPT.block_size` 或 `max_seq_len`，取不到则默认 256。因此小上下文模型也能跑通、不会越界或 OOM；建议给 `MiniGPT` 暴露 `block_size` 或 `max_seq_len` 属性，让自检按你的真实训练长度切窗。
 
 结果写入 `eval/result.json`，提交时附上。
+
+本仓库最终复现结果：dev token PPL `46.70`，UTF-8 byte NLL `1.5952`，KV cache 最大误差 `3.81e-6`；M5 人工全项通过 `32/40`（greedy `8/10`、temperature `9/10`、top-k `7/10`、top-p `8/10`）。未通过样例没有删除，详见复核文件。
 
 ## AI Tutor 反馈
 
